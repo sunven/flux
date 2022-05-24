@@ -9,18 +9,17 @@
  * @flow
  */
 
-'use strict';
+'use strict'
 
-import type Dispatcher from 'Dispatcher';
+import type Dispatcher from 'Dispatcher'
 
-const FluxStore = require('FluxStore');
+const FluxStore = require('FluxStore')
 
-const abstractMethod = require('abstractMethod');
-const invariant = require('invariant');
+const abstractMethod = require('abstractMethod')
+const invariant = require('invariant')
 
 /**
- * This is the basic building block of a Flux application. All of your stores
- * should extend this class.
+ * 这是 Flux 应用程序的基类。 所有的store 应该继承这个类
  *
  *   class CounterStore extends FluxReduceStore<number> {
  *     getInitialState(): number {
@@ -40,74 +39,72 @@ const invariant = require('invariant');
  *   }
  */
 class FluxReduceStore<TState> extends FluxStore {
-
-  _state: TState;
+  _state: TState
 
   constructor(dispatcher: Dispatcher<Object>) {
-    super(dispatcher);
-    this._state = this.getInitialState();
+    super(dispatcher)
+    this._state = this.getInitialState()
   }
 
   /**
-   * Getter that exposes the entire state of this store. If your state is not
-   * immutable you should override this and not expose _state directly.
+   * 获取store 的 state。 如果你的state不是不可变的，你应该覆盖它而不是直接暴露 _state
    */
   getState(): TState {
-    return this._state;
+    return this._state
   }
 
   /**
-   * Constructs the initial state for this store. This is called once during
-   * construction of the store.
+   * 获取初始state。 这在new store时被调用一次
    */
   getInitialState(): TState {
-    return abstractMethod('FluxReduceStore', 'getInitialState');
+    return abstractMethod('FluxReduceStore', 'getInitialState')
   }
 
   /**
-   * Used to reduce a stream of actions coming from the dispatcher into a
-   * single state object.
+   * 用于将来自dispatcher的action减少为单个状态对象
+   * dispatcher dispatch时，实际调用到这里
    */
   reduce(state: TState, action: Object): TState {
-    return abstractMethod('FluxReduceStore', 'reduce');
+    return abstractMethod('FluxReduceStore', 'reduce')
   }
 
   /**
-   * Checks if two versions of state are the same. You do not need to override
-   * this if your state is immutable.
+   * 检查两个版本的state是否相同。 如果您的state是不可变的，则不需要覆盖它
    */
   areEqual(one: TState, two: TState): boolean {
-    return one === two;
+    return one === two
   }
 
+  // 调用分发,
+  // 重写于父类，new store 时被dispatch registry
+  // 即 dispatcher dispatch时触发
   __invokeOnDispatch(action: Object): void {
-    this.__changed = false;
+    this.__changed = false
 
-    // Reduce the stream of incoming actions to state, update when necessary.
-    const startingState = this._state;
-    const endingState = this.reduce(startingState, action);
+    // action传入reduce，必要时更新
+    const startingState = this._state
+    const endingState = this.reduce(startingState, action)
 
     // This means your ending state should never be undefined.
     invariant(
       endingState !== undefined,
-      '%s returned undefined from reduce(...), did you forget to return ' +
-      'state in the default case? (use null if this was intentional)',
-      this.constructor.name,
-    );
+      '%s returned undefined from reduce(...), did you forget to return ' + 'state in the default case? (use null if this was intentional)',
+      this.constructor.name
+    )
 
     if (!this.areEqual(startingState, endingState)) {
-      this._state = endingState;
+      // 更新state
+      this._state = endingState
 
-      // `__emitChange()` sets `this.__changed` to true and then the actual
-      // change will be fired from the emitter at the end of the dispatch, this
-      // is required in order to support methods like `hasChanged()`
-      this.__emitChange();
+      // __emitChange：父类的方法，__changed改为true
+      this.__emitChange()
     }
 
     if (this.__changed) {
-      this.__emitter.emit(this.__changeEvent);
+      // 通知所有订阅
+      this.__emitter.emit(this.__changeEvent)
     }
   }
 }
 
-module.exports = FluxReduceStore;
+module.exports = FluxReduceStore

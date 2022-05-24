@@ -11,22 +11,19 @@
  * @preventMunge
  */
 
-'use strict';
+'use strict'
 
-var invariant = require('invariant');
+var invariant = require('invariant')
 
-export type DispatchToken = string;
+export type DispatchToken = string
 
-var _prefix = 'ID_';
+var _prefix = 'ID_'
 
 /**
- * Dispatcher is used to broadcast payloads to registered callbacks. This is
- * different from generic pub-sub systems in two ways:
+ * Dispatcher 用于将有效负载广播到已注册的回调。 这在两个方面不同于一般的 pub-sub 系统
  *
- *   1) Callbacks are not subscribed to particular events. Every payload is
- *      dispatched to every registered callback.
- *   2) Callbacks can be deferred in whole or part until other callbacks have
- *      been executed.
+ *   1) 回调不订阅特定事件。 每个payload都被dispatch给每个注册的回调.
+ *   2) 回调可以全部或部分延迟，直到其他回调被执行.
  *
  * For example, consider this hypothetical flight destination form, which
  * selects a default city when a country is selected:
@@ -107,91 +104,78 @@ var _prefix = 'ID_';
  * `FlightPriceStore`.
  */
 class Dispatcher<TPayload> {
-  _callbacks: {[key: DispatchToken]: (payload: TPayload) => void};
-  _isDispatching: boolean;
-  _isHandled: {[key: DispatchToken]: boolean};
-  _isPending: {[key: DispatchToken]: boolean};
-  _lastID: number;
-  _pendingPayload: TPayload;
+  _callbacks: { [key: DispatchToken]: (payload: TPayload) => void }
+  _isDispatching: boolean
+  _isHandled: { [key: DispatchToken]: boolean }
+  _isPending: { [key: DispatchToken]: boolean }
+  _lastID: number
+  _pendingPayload: TPayload // dispatching 时，待办的payload
 
   constructor() {
-    this._callbacks = {};
-    this._isDispatching = false;
-    this._isHandled = {};
-    this._isPending = {};
-    this._lastID = 1;
+    this._callbacks = {} // 存储回调
+    this._isDispatching = false // 是否正在分发
+    this._isHandled = {} //
+    this._isPending = {} //
+    this._lastID = 1 // callback id
   }
 
   /**
-   * Registers a callback to be invoked with every dispatched payload. Returns
-   * a token that can be used with `waitFor()`.
+   * 注册一个回调，以便在每个dispatch payload中调用。 退货
+   * 返回一个id,可以在waitFor()中使用
    */
   register(callback: (payload: TPayload) => void): DispatchToken {
-    var id = _prefix + this._lastID++;
-    this._callbacks[id] = callback;
-    return id;
+    var id = _prefix + this._lastID++
+    this._callbacks[id] = callback
+    return id
   }
 
   /**
-   * Removes a callback based on its token.
+   * 根据id 移除callback
    */
   unregister(id: DispatchToken): void {
-    invariant(
-      this._callbacks[id],
-      'Dispatcher.unregister(...): `%s` does not map to a registered callback.',
-      id
-    );
-    delete this._callbacks[id];
+    invariant(this._callbacks[id], 'Dispatcher.unregister(...): `%s` does not map to a registered callback.', id)
+    delete this._callbacks[id]
   }
 
   /**
-   * Waits for the callbacks specified to be invoked before continuing execution
-   * of the current callback. This method should only be used by a callback in
-   * response to a dispatched payload.
+   * 在继续执行当前回调之前等待指定的回调被调用。
+   * 此方法仅应由回调使用，以响应分发的payload
    */
   waitFor(ids: Array<DispatchToken>): void {
-    invariant(
-      this._isDispatching,
-      'Dispatcher.waitFor(...): Must be invoked while dispatching.'
-    );
+    // 已将开始 dispatch 才能使用waitFor
+    // 即，只能用在dispatch中
+    invariant(this._isDispatching, 'Dispatcher.waitFor(...): Must be invoked while dispatching.')
     for (var ii = 0; ii < ids.length; ii++) {
-      var id = ids[ii];
+      var id = ids[ii]
       if (this._isPending[id]) {
-        invariant(
-          this._isHandled[id],
-          'Dispatcher.waitFor(...): Circular dependency detected while ' +
-          'waiting for `%s`.',
-          id
-        );
-        continue;
+        // 该回调正在执行，跳过
+        invariant(this._isHandled[id], 'Dispatcher.waitFor(...): Circular dependency detected while ' + 'waiting for `%s`.', id)
+        continue
       }
-      invariant(
-        this._callbacks[id],
-        'Dispatcher.waitFor(...): `%s` does not map to a registered callback.',
-        id
-      );
-      this._invokeCallback(id);
+      invariant(this._callbacks[id], 'Dispatcher.waitFor(...): `%s` does not map to a registered callback.', id)
+      // 执行waitFor传进来的回调
+      this._invokeCallback(id)
     }
   }
 
   /**
-   * Dispatches a payload to all registered callbacks.
+   * dispatch 一个 payload 给所有已注册的回调
    */
   dispatch(payload: TPayload): void {
-    invariant(
-      !this._isDispatching,
-      'Dispatch.dispatch(...): Cannot dispatch in the middle of a dispatch.'
-    );
-    this._startDispatching(payload);
+    invariant(!this._isDispatching, 'Dispatch.dispatch(...): Cannot dispatch in the middle of a dispatch.')
+    // 开始 dispatch
+    this._startDispatching(payload)
     try {
       for (var id in this._callbacks) {
         if (this._isPending[id]) {
-          continue;
+          // 如果这个 callback 已经在执行了，跳过
+          continue
         }
-        this._invokeCallback(id);
+        this._invokeCallback(id)
       }
     } finally {
-      this._stopDispatching();
+      // 停止 dispatch
+      this._stopDispatching()
     }
   }
 
@@ -199,7 +183,7 @@ class Dispatcher<TPayload> {
    * Is this Dispatcher currently dispatching.
    */
   isDispatching(): boolean {
-    return this._isDispatching;
+    return this._isDispatching
   }
 
   /**
@@ -209,34 +193,34 @@ class Dispatcher<TPayload> {
    * @internal
    */
   _invokeCallback(id: DispatchToken): void {
-    this._isPending[id] = true;
-    this._callbacks[id](this._pendingPayload);
-    this._isHandled[id] = true;
+    this._isPending[id] = true // 标记这个 callback 正在执行
+    this._callbacks[id](this._pendingPayload) // 执行callback
+    this._isHandled[id] = true // 标记这个 callback 已处理
   }
 
   /**
-   * Set up bookkeeping needed when dispatching.
+   * 开始 dispatch
    *
    * @internal
    */
   _startDispatching(payload: TPayload): void {
     for (var id in this._callbacks) {
-      this._isPending[id] = false;
-      this._isHandled[id] = false;
+      this._isPending[id] = false // 标记这个 callback 未在执行
+      this._isHandled[id] = false // 标记这个 callback 未处理
     }
-    this._pendingPayload = payload;
-    this._isDispatching = true;
+    this._pendingPayload = payload // 记录当前 payload
+    this._isDispatching = true // 正在dispatch
   }
 
   /**
-   * Clear bookkeeping used for dispatching.
+   * 停止 dispatch
    *
    * @internal
    */
   _stopDispatching(): void {
-    delete this._pendingPayload;
-    this._isDispatching = false;
+    delete this._pendingPayload // 删除当前payload
+    this._isDispatching = false // 改为未执行的状态
   }
 }
 
-module.exports = Dispatcher;
+module.exports = Dispatcher
