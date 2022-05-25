@@ -114,8 +114,8 @@ class Dispatcher<TPayload> {
   constructor() {
     this._callbacks = {} // 存储回调
     this._isDispatching = false // 是否正在分发
-    this._isHandled = {} //
-    this._isPending = {} //
+    this._isHandled = {} // 标记回调是否已执行
+    this._isPending = {} // 标记回调是否在执行
     this._lastID = 1 // callback id
   }
 
@@ -180,15 +180,14 @@ class Dispatcher<TPayload> {
   }
 
   /**
-   * Is this Dispatcher currently dispatching.
+   * 当前的 Dispatcher 是否正在分发
    */
   isDispatching(): boolean {
     return this._isDispatching
   }
 
   /**
-   * Call the callback stored with the given id. Also do some internal
-   * bookkeeping.
+   * 执行回调.
    *
    * @internal
    */

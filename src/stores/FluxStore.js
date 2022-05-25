@@ -44,11 +44,12 @@ class FluxStore {
     })
   }
 
+  // 添加一个订阅
   addListener(callback: (eventType?: string) => void): { remove: () => void } {
-    // 添加一个订阅
     return this.__emitter.addListener(this.__changeEvent, callback)
   }
 
+  // 获取dispatcher
   getDispatcher(): Dispatcher<any> {
     return this.__dispatcher
   }

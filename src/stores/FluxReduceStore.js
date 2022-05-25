@@ -62,7 +62,7 @@ class FluxReduceStore<TState> extends FluxStore {
 
   /**
    * 用于将来自dispatcher的action减少为单个状态对象
-   * dispatcher dispatch时，实际调用到这里
+   * dispatcher dispatch时，实际调用到这里，即reduce就是处理state的方法
    */
   reduce(state: TState, action: Object): TState {
     return abstractMethod('FluxReduceStore', 'reduce')
